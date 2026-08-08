@@ -601,6 +601,20 @@
     transition:opacity 0.6s ease;
     opacity:0;
   }
+
+  /* ---------- music toggle ---------- */
+  .music-toggle{
+    position:fixed; bottom:20px; right:20px; z-index:500;
+    width:44px; height:44px; border-radius:50%;
+    background:var(--paper); border:1px solid var(--gold-pale);
+    box-shadow:var(--shadow);
+    color:var(--gold-deep); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:background 0.2s ease, transform 0.2s ease;
+  }
+  .music-toggle:hover{ background:var(--cream-deep); transform:scale(1.06); }
+  .music-toggle svg{ width:18px; height:18px; }
+  .music-toggle:focus-visible{ outline:2px solid var(--wine); outline-offset:2px; }
 </style>
 </head>
 <body class="env-locked">
@@ -621,6 +635,15 @@
     <div class="envelope-tap-hint">Tap to open</div>
   </div>
 </div>
+
+<audio id="bgMusic" loop preload="none">
+  <source src="song.mp3" type="audio/mpeg">
+</audio>
+
+<button class="music-toggle" id="musicToggle" aria-label="Toggle music" style="display:none;">
+  <svg id="musicIconOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
+  <svg id="musicIconOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:none;"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/><line x1="3" y1="3" x2="21" y2="21"/></svg>
+</button>
 
 <div class="bg-texture"></div>
 
@@ -950,22 +973,12 @@
   // ---------- Photo Gallery ----------
   // TO CHANGE THE PHOTOS: just edit this list. Add, remove, or reorder
   // lines freely — the gallery below is built from whatever is here.
-  //
-  // Each entry needs a "src" — the path to the image file relative to
-  // this HTML file. Your photos live in a folder called "wedding fotos"
-  // right next to this file. Since it has a space in the name, that
-  // space must be written as %20 in the path below (the actual folder
-  // on disk keeps its normal name — this is just how browsers read it):
-  //
-  //   { src: "wedding%20fotos/photo1.jpg", alt: "Jeffrey and Safuratu" },
-  //   { src: "wedding%20fotos/photo2.jpg", alt: "Engagement photo" },
-  //
   var GALLERY_PHOTOS = [
     { src: "foto1.jpg", alt: "Jeffrey and Safuratu back to back, her hand on his shoulder showing her engagement ring" },
     { src: "foto4.jpg", alt: "Close-up of Safuratu's engagement ring resting on Jeffrey's shoulder" },
     { src: "foto5.jpg", alt: "Jeffrey seated with Safuratu standing behind him, arms wrapped around his shoulders" },
     { src: "foto3.jpg", alt: "Detail shot of Safuratu's engagement ring against Jeffrey's jacket" },
-    { src: "foto11.jpg", alt: "Detail shot of Safuratu's engagement ring against Jeffrey's jacket" }
+    { src: "foto8.jpg", alt: "Close-up of Safuratu's hand and engagement ring resting on Jeffrey's shoulder" }
   ];
 
   (function initGallery(){
@@ -1023,10 +1036,14 @@
     });
   })();
 
-  // ---------- Envelope intro ----------
+  // ---------- Envelope intro + background music ----------
   (function(){
     var overlay = document.getElementById('envelope-intro');
     var envelope = document.getElementById('envelope');
+    var bgMusic = document.getElementById('bgMusic');
+    var musicToggle = document.getElementById('musicToggle');
+    var musicIconOn = document.getElementById('musicIconOn');
+    var musicIconOff = document.getElementById('musicIconOff');
     if(!overlay || !envelope) return;
 
     var opened = false;
@@ -1034,6 +1051,19 @@
       if(opened) return;
       opened = true;
       overlay.classList.add('opening');
+
+      // Start the music right on the tap — this is the one moment browsers
+      // allow audio to begin, since it's a direct response to a user gesture.
+      if(bgMusic){
+        bgMusic.volume = 0.6;
+        var playPromise = bgMusic.play();
+        if(playPromise && playPromise.then){
+          playPromise.then(function(){
+            if(musicToggle) musicToggle.style.display = 'flex';
+          }).catch(function(){ /* song file missing or blocked — invitation still opens fine */ });
+        }
+      }
+
       setTimeout(function(){
         overlay.classList.add('closing-out');
       }, 950);
@@ -1046,6 +1076,21 @@
     envelope.addEventListener('keydown', function(e){
       if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openEnvelope(); }
     });
+
+    if(musicToggle){
+      musicToggle.addEventListener('click', function(e){
+        e.stopPropagation();
+        if(bgMusic.paused){
+          bgMusic.play();
+          musicIconOn.style.display = 'block';
+          musicIconOff.style.display = 'none';
+        } else {
+          bgMusic.pause();
+          musicIconOn.style.display = 'none';
+          musicIconOff.style.display = 'block';
+        }
+      });
+    }
   })();
 
   // ---------- Scroll reveal ----------
@@ -1075,16 +1120,6 @@
   });
 
   // ---------- RSVP submit → Google Form ----------
-  // HOW TO FINISH SETUP:
-  // 1. Create a Google Form with 4 questions, in this order/type:
-  //      - "Full Name"                (Short answer)
-  //      - "Will you be attending?"   (Short answer)  — will receive "yes" or "no"
-  //      - "Number of Guests"         (Short answer)
-  //      - "Message for the Couple"   (Paragraph)
-  // 2. In the Form editor, click the 3-dot menu → "Get pre-filled link".
-  // 3. Fill in dummy answers for all 4 questions and click "Get link".
-  // 4. Copy that long URL and paste it below as PREFILLED_LINK — the code
-  //    will read the entry IDs out of it automatically. Nothing else to edit.
   var PREFILLED_LINK = "https://docs.google.com/forms/d/e/1FAIpQLSfnVHGxb9JMSUw8YAq1teTmzXuv3dNgCv5gVGfgPKK1_m29Sw/viewform?usp=pp_url&entry.2031339406=Kojo&entry.639939818=yes+&entry.1628609708=2&entry.1716503548=have+a+great+marriage+life+filled+with+Gods+blessings++";
 
   function parseGoogleFormConfig(prefilledLink){
@@ -1100,8 +1135,6 @@
       if(!formId) return null;
       return {
         actionUrl: "https://docs.google.com/forms/d/e/" + formId[1] + "/formResponse",
-        // Order matches the order entries appear in the pre-filled URL,
-        // which follows the order questions were added in the Form.
         entryFullName: entries[0],
         entryAttending: entries[1],
         entryGuests: entries[2],
@@ -1116,9 +1149,6 @@
   var successBox = document.getElementById('rsvpSuccess');
   var submitBtn = document.getElementById('submitBtn');
 
-  // Hidden iframe target so the Google Form POST happens off-page —
-  // this is the reliable method (fetch()/no-cors can get blocked
-  // depending on how the page is opened or hosted).
   var hiddenFrame = document.createElement('iframe');
   hiddenFrame.name = 'hidden_rsvp_frame';
   hiddenFrame.style.display = 'none';
@@ -1156,7 +1186,6 @@
     var guests = document.getElementById('guests').value;
     var message = document.getElementById('message').value.trim();
 
-    // Local backup on this device, in case the Google Form isn't wired up yet
     try{
       var record = { name: name, attending: attending, guests: guests, message: message, ts: new Date().toISOString() };
       var existing = JSON.parse(localStorage.getItem('rsvp_jeffrey_safuratu') || '[]');
